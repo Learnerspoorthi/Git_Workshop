@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>To-Do App</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #f5f7fa;
+      color: #1f2933;
+    }
+    .app {
+      max-width: 480px;
+      margin: 40px auto;
+      padding: 24px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    }
+    h1 { margin-top: 0; }
+    form { display: flex; gap: 8px; margin-bottom: 16px; }
+    input[type=text] {
+      flex: 1;
+      padding: 10px 12px;
+      font: inherit;
+      border: 1px solid #cbd2d9;
+      border-radius: 8px;
+    }
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: #2f6fed;
+      color: #fff;
+    }
+    button.delete { background: #d64545; padding: 6px 10px; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e4e7eb;
+    }
+    li span { flex: 1; }
+    li.done span { text-decoration: line-through; color: #9aa5b1; }
+    .empty { color: #9aa5b1; text-align: center; padding: 16px 0; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>My Tasks</h1>
+    <form id="form">
+      <input id="text" type="text" placeholder="Add a task" aria-label="New task" autocomplete="off">
+      <button type="submit">Add</button>
+    </form>
+    <ul id="list"></ul>
+  </div>
+
+  <script>
+    const list = document.getElementById('list');
+    const form = document.getElementById('form');
+    const input = document.getElementById('text');
+
+    async function load() {
+      const res = await fetch('/api/todos');
+      render(await res.json());
+    }
+
+    function render(todos) {
+      list.innerHTML = '';
+      if (!todos.length) {
+        list.innerHTML = '<div class="empty">No tasks yet. Add one above.</div>';
+        return;
+      }
+      todos.forEach(t => {
+        const li = document.createElement('li');
+        if (t.done) li.classList.add('done');
+
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = t.done;
+        box.addEventListener('change', async () => {
+          await fetch('/api/todos/' + t.id, { method: 'PATCH' });
+          load();
+        });
+
+        const span = document.createElement('span');
+        span.textContent = t.text;
+
+        const del = document.createElement('button');
+        del.className = 'delete';
+        del.textContent = 'Delete';
+        del.addEventListener('click', async () => {
+          await fetch('/api/todos/' + t.id, { method: 'DELETE' });
+          load();
+        });
+
+        li.append(box, span, del);
+        list.appendChild(li);
+      });
+    }
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      await fetch('/api/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      input.value = '';
+      load();
+    });
+
+    load();
+  </script>
+</body>
+</html>
